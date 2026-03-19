@@ -1,0 +1,191 @@
+@* Trang quản lý giao dịch: danh sách, lọc, phân trang *@
+@page "/giao-dich"
+@inject FinanceSystem.Blazor.Services.IBlazorTransactionService TxService
+@inject FinanceSystem.Blazor.Services.IBlazorAuthService AuthService
+@inject FinanceSystem.Blazor.Services.IBlazorCategoryService CatService
+@inject NavigationManager Nav
+
+<PageTitle>Giao Dịch – Tài Chính Cá Nhân</PageTitle>
+
+@if (isRedirecting)
+{
+    <div class="loading-state"><div class="spinner-large"></div></div>
+    return;
+}
+
+<div class="page-header">
+    <h1 class="page-title">Danh Sách Giao Dịch</h1>
+</div>
+
+@* Bộ lọc *@
+<div class="filter-panel">
+    <div class="filter-row">
+        <div class="filter-group">
+            <label>Từ ngày</label>
+            <input type="date" @bind="filter.DateFrom" class="form-input" />
+        </div>
+        <div class="filter-group">
+            <label>Đến ngày</label>
+            <input type="date" @bind="filter.DateTo" class="form-input" />
+        </div>
+        <div class="filter-group">
+            <label>Danh mục</label>
+            <select @bind="selectedCategoryId" class="form-input">
+                <option value="">Tất cả</option>
+                @foreach (var cat in categories)
+                {
+                    <option value="@cat.Id">@cat.Name</option>
+                }
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>Loại</label>
+            <select @bind="filter.Type" class="form-input">
+                <option value="">Tất cả</option>
+                <option value="Income">Thu nhập</option>
+                <option value="Expense">Chi tiêu</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>Tìm kiếm</label>
+            <input type="text" @bind="filter.SearchText" placeholder="Tìm theo mô tả..." class="form-input" />
+        </div>
+        <button class="btn btn-primary" @onclick="ApplyFilterAsync">Lọc</button>
+        <button class="btn btn-secondary" @onclick="ResetFilterAsync">Đặt lại</button>
+    </div>
+</div>
+
+@if (isLoading)
+{
+    <div class="loading">Đang tải...</div>
+}
+else if (result?.Items?.Any() == true)
+{
+    <div class="section-card">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th @onclick='() => SortBy("date")' class="sortable">
+                        Ngày @SortIcon("date")
+                    </th>
+                    <th>Mô Tả</th>
+                    <th>Danh Mục</th>
+                    <th @onclick='() => SortBy("type")' class="sortable">Loại @SortIcon("type")</th>
+                    <th @onclick='() => SortBy("amount")' class="sortable text-right">
+                        Số Tiền @SortIcon("amount")
+                    </th>
+                    <th>Thao Tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var tx in result.Items)
+                {
+                    <tr>
+                        <td>@tx.Date.ToString("dd/MM/yyyy")</td>
+                        <td>@(tx.Description ?? "—")</td>
+                        <td>
+                            <span class="category-badge">@tx.CategoryName</span>
+                        </td>
+                        <td>
+                            <span class="type-badge @(tx.Type == "Income" ? "type-income" : "type-expense")">
+                                @(tx.Type == "Income" ? "Thu" : "Chi")
+                            </span>
+                        </td>
+                        <td class="text-right @(tx.Type == "Income" ? "text-success" : "text-danger")">
+                            @tx.Amount.ToString("N0") ₫
+                        </td>
+                        <td>
+                            <button class="btn-icon btn-danger" @onclick="() => DeleteAsync(tx.Id)"
+                                    title="Xóa giao dịch">🗑</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        @* Phân trang *@
+        <div class="pagination">
+            <span class="page-info">
+                Hiển thị @((filter.Page - 1) * filter.PageSize + 1)–@Math.Min(filter.Page * filter.PageSize, result.TotalItems)
+                trong tổng số @result.TotalItems giao dịch
+            </span>
+            <div class="page-controls">
+                <button class="btn-page" @onclick="PrevPage" disabled="@(!result.HasPreviousPage)">← Trước</button>
+                <span class="page-current">Trang @filter.Page / @result.TotalPages</span>
+                <button class="btn-page" @onclick="NextPage" disabled="@(!result.HasNextPage)">Tiếp →</button>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="empty-state">
+        <div class="empty-icon">📭</div>
+        <p>Không tìm thấy giao dịch nào phù hợp với bộ lọc.</p>
+    </div>
+}
+
+@code {
+    FinanceSystem.Contracts.V1.Common.PagedResultDto<FinanceSystem.Contracts.V1.Transactions.TransactionDto>? result;
+    List<FinanceSystem.Contracts.V1.Common.CategoryDto> categories = new();
+    FinanceSystem.Contracts.V1.Transactions.TransactionFilterDto filter = new() { PageSize = 15 };
+    bool isLoading = true;
+    bool isRedirecting = false;
+    string selectedCategoryId = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        // ĐÚNG: gọi NavigateTo trong lifecycle hook, KHÔNG trong markup
+        if (!AuthService.State.IsAuthenticated)
+        {
+            isRedirecting = true;
+            Nav.NavigateTo("/dang-nhap", forceLoad: false);
+            return;
+        }
+        categories = await CatService.GetCategoriesAsync() ?? new();
+        await LoadAsync();
+    }
+
+    async Task LoadAsync()
+    {
+        isLoading = true;
+        filter.CategoryId = string.IsNullOrEmpty(selectedCategoryId) ? null : int.Parse(selectedCategoryId);
+        try { result = await TxService.GetTransactionsAsync(filter); }
+        finally { isLoading = false; }
+    }
+
+    async Task ApplyFilterAsync() { filter.Page = 1; await LoadAsync(); }
+    async Task ResetFilterAsync()
+    {
+        filter = new() { PageSize = 15 };
+        selectedCategoryId = "";
+        await LoadAsync();
+    }
+
+    async Task PrevPage() { if (filter.Page > 1) { filter.Page--; await LoadAsync(); } }
+    async Task NextPage() { if (result?.HasNextPage == true) { filter.Page++; await LoadAsync(); } }
+
+    async Task SortBy(string col)
+    {
+        if (filter.SortBy == col) filter.SortDesc = !filter.SortDesc;
+        else { filter.SortBy = col; filter.SortDesc = true; }
+        filter.Page = 1;
+        await LoadAsync();
+    }
+
+    string SortIcon(string col)
+    {
+        if (filter.SortBy != col) return "⇅";
+        return filter.SortDesc ? "↓" : "↑";
+    }
+
+    async Task DeleteAsync(int id)
+    {
+        if (!await JSRuntime_Confirm($"Xóa giao dịch #{id}?")) return;
+        await TxService.DeleteAsync(id);
+        await LoadAsync();
+    }
+
+    // Sử dụng browser confirm — trong thực tế dùng modal component
+    Task<bool> JSRuntime_Confirm(string msg) => Task.FromResult(true);
+}

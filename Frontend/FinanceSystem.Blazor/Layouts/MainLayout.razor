@@ -1,0 +1,32 @@
+@* Layout chính cho ứng dụng Blazor Server *@
+@inherits LayoutComponentBase
+@inject FinanceSystem.Blazor.Services.IBlazorAuthService AuthService
+@inject NavigationManager Nav
+
+<div class="layout">
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <span>💰</span>
+            <span class="brand-name">Tài Chính</span>
+        </div>
+        <nav class="sidebar-nav">
+            <NavLink href="/" Match="NavLinkMatch.All" class="nav-link">📊 Bảng Điều Khiển</NavLink>
+            <NavLink href="/giao-dich" class="nav-link">💳 Giao Dịch</NavLink>
+            <NavLink href="/import" class="nav-link">📤 Import Dữ Liệu</NavLink>
+            <NavLink href="/lich-su-import" class="nav-link">📋 Lịch Sử Import</NavLink>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="user-name">@AuthService.State.UserName</div>
+            <button class="btn-logout" @onclick="LogoutAsync">Đăng Xuất</button>
+        </div>
+    </aside>
+    <main class="main-content">@Body</main>
+</div>
+
+@code {
+    private async Task LogoutAsync()
+    {
+        await AuthService.LogoutAsync();
+        Nav.NavigateTo("/dang-nhap", forceLoad: true);
+    }
+}

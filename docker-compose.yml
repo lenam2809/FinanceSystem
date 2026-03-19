@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  # Database PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: finance-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: finance
+      POSTGRES_PASSWORD: finance
+      POSTGRES_DB: finance
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U finance"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ASP.NET Core Web API
+  api:
+    build:
+      context: .
+      dockerfile: Backend/FinanceSystem.API/Dockerfile
+    container_name: finance-api
+    restart: unless-stopped
+    ports:
+      - "5000:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=finance;Username=finance;Password=finance
+      - Jwt__Key=your_super_secret_key_must_be_at_least_32_characters_long
+      - Jwt__Issuer=FinanceSystem
+      - Jwt__Audience=FinanceSystemClients
+      - AllowedOrigins__0=http://localhost:5001
+    volumes:
+      - api_logs:/app/logs
+
+volumes:
+  pgdata:
+    driver: local
+  api_logs:
+    driver: local

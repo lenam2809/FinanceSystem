@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Dự án Domain: chứa entities, value objects, domain events, interfaces cốt lõi -->
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>FinanceSystem.Domain</RootNamespace>
+  </PropertyGroup>
+
+</Project>

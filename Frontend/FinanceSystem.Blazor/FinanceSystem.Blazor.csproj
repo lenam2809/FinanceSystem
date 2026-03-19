@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <!-- Dự án Blazor Server: dashboard người dùng, hỗ trợ real-time qua SignalR -->
+    <!-- Chọn Blazor Server vì yêu cầu real-time SignalR notifications khi import xong -->
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>FinanceSystem.Blazor</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Shared\FinanceSystem.Contracts\FinanceSystem.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Microsoft.AspNetCore.Components.Web và Authentication.Cookies đã có sẵn
+         trong Microsoft.NET.Sdk.Web - KHÔNG thêm PackageReference riêng -->
+
+    <!-- HTTP client factory -->
+    <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
+
+    <!-- Chart.js dùng qua JS interop trực tiếp trong _Host.cshtml
+         Không cần ChartJs.Blazor wrapper (version cũ, không còn maintain) -->
+  </ItemGroup>
+
+</Project>

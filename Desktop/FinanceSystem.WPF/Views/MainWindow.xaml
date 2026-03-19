@@ -1,0 +1,363 @@
+<!-- Cửa sổ chính Admin Tool - Tab Import + Tab Lịch sử -->
+<Window x:Class="FinanceSystem.WPF.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Hệ Thống Tài Chính – Admin Tool"
+        Height="700" Width="1060"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource BackgroundBrush}">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="56"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- THANH TIÊU ĐỀ -->
+        <Border Grid.Row="0" Background="{StaticResource PrimaryBrush}">
+            <Grid Margin="16,0">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="💰" FontSize="20" Foreground="White" Margin="0,0,8,0"/>
+                    <TextBlock Text="Finance System Admin"
+                               FontSize="16" FontWeight="SemiBold"
+                               Foreground="White" VerticalAlignment="Center"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal"
+                            HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding UserInfo}"
+                               Foreground="#BFDBFE" FontSize="13"
+                               VerticalAlignment="Center" Margin="0,0,16,0"/>
+                    <Button Content="Đăng Xuất"
+                            Command="{Binding LogoutCommand}"
+                            Background="Transparent" Foreground="White"
+                            BorderBrush="#BFDBFE" BorderThickness="1"
+                            Padding="12,6" Cursor="Hand"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- NỘI DUNG CHÍNH -->
+        <TabControl Grid.Row="1" Margin="16"
+                    Background="Transparent" BorderThickness="0"
+                    SelectionChanged="TabControl_SelectionChanged">
+
+            <!-- ═══ TAB 1: IMPORT FILE ═══ -->
+            <!-- DataContext của tab này là MainViewModel.ImportTab -->
+            <TabItem Header="📤 Import Excel"
+                     DataContext="{Binding ImportTab}">
+                <Grid Margin="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="300"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- PANEL TRÁI -->
+                    <Border Grid.Column="0" Background="White" CornerRadius="8"
+                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                            Padding="20">
+                        <StackPanel>
+                            <TextBlock Text="Nhập Dữ Liệu Giao Dịch"
+                                       FontSize="15" FontWeight="SemiBold"
+                                       Margin="0,0,0,4"/>
+                            <TextBlock Text="File .xlsx với cột: Ngày, Số tiền, Danh mục, Mô tả"
+                                       FontSize="12"
+                                       Foreground="{StaticResource TextMutedBrush}"
+                                       TextWrapping="Wrap" Margin="0,0,0,20"/>
+
+                            <!-- ── BƯỚC 1: Tải template ── -->
+                            <Border Background="#F0FDF4" BorderBrush="#BBF7D0"
+                                    BorderThickness="1" CornerRadius="6"
+                                    Padding="12,10" Margin="0,0,0,14">
+                                <StackPanel>
+                                    <TextBlock Text="Bước 1 — Tải file mẫu"
+                                               FontWeight="SemiBold" FontSize="12"
+                                               Foreground="#166534" Margin="0,0,0,4"/>
+                                    <TextBlock Text="Template có sẵn dữ liệu mẫu, dropdown danh mục và hướng dẫn nhập liệu."
+                                               FontSize="11" Foreground="#166534"
+                                               TextWrapping="Wrap" Margin="0,0,0,8"/>
+                                    <Button Command="{Binding DownloadTemplateCommand}"
+                                            Height="34" Cursor="Hand" BorderThickness="0">
+                                        <Button.Style>
+                                            <Style TargetType="Button">
+                                                <Setter Property="Background" Value="#16A34A"/>
+                                                <Setter Property="Foreground" Value="White"/>
+                                                <Setter Property="FontWeight" Value="SemiBold"/>
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="Button">
+                                                            <Border Background="{TemplateBinding Background}"
+                                                                    CornerRadius="6" Padding="10,6">
+                                                                <ContentPresenter HorizontalAlignment="Center"
+                                                                                  VerticalAlignment="Center"/>
+                                                            </Border>
+                                                            <ControlTemplate.Triggers>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter Property="Background" Value="#15803D"/>
+                                                                </Trigger>
+                                                                <Trigger Property="IsEnabled" Value="False">
+                                                                    <Setter Property="Opacity" Value="0.5"/>
+                                                                </Trigger>
+                                                            </ControlTemplate.Triggers>
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </Style>
+                                        </Button.Style>
+                                        <TextBlock Text="{Binding IsDownloading,
+                                                           Converter={StaticResource LoadingTextConverter},
+                                                           ConverterParameter='⏳  Đang tải...|⬇  Tải File Template (.xlsx)'}"/>
+                                    </Button>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Đường kẻ phân cách -->
+                            <Separator Margin="0,0,0,14"/>
+
+                            <!-- ── BƯỚC 2: Chọn file đã điền ── -->
+                            <TextBlock Text="Bước 2 — Chọn file đã điền dữ liệu"
+                                       FontWeight="SemiBold" FontSize="12"
+                                       Foreground="#1D4ED8" Margin="0,0,0,8"/>
+
+                            <!-- Tên file đã chọn -->
+                            <Border Background="#EFF6FF" BorderBrush="#BFDBFE"
+                                    BorderThickness="1" CornerRadius="6"
+                                    Padding="12,10" Margin="0,0,0,12">
+                                <TextBlock Text="{Binding SelectedFileName}"
+                                           FontSize="13"
+                                           TextTrimming="CharacterEllipsis"/>
+                            </Border>
+
+                            <!-- Nút chọn file -->
+                            <Button Content="📂  Chọn File Excel"
+                                    Command="{Binding SelectFileCommand}"
+                                    Style="{StaticResource PrimaryButton}"
+                                    Margin="0,0,0,8" Height="38"/>
+
+                            <!-- Nút bắt đầu import -->
+                            <Button Command="{Binding ImportCommand}"
+                                    Background="{StaticResource SuccessBrush}"
+                                    Foreground="White" FontWeight="SemiBold"
+                                    Height="38" Padding="12,8"
+                                    Cursor="Hand" BorderThickness="0">
+                                <Button.Style>
+                                    <Style TargetType="Button">
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border Background="{TemplateBinding Background}"
+                                                            CornerRadius="6"
+                                                            Padding="{TemplateBinding Padding}">
+                                                        <ContentPresenter HorizontalAlignment="Center"
+                                                                          VerticalAlignment="Center"/>
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsEnabled" Value="False">
+                                                            <Setter Property="Opacity" Value="0.5"/>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </Button.Style>
+                                <TextBlock Text="{Binding IsImporting,
+                                                   Converter={StaticResource LoadingTextConverter},
+                                                   ConverterParameter='Đang import...|🚀  Bắt Đầu Import'}"/>
+                            </Button>
+
+                            <!-- Thông báo trạng thái -->
+                            <TextBlock Text="{Binding StatusMessage}"
+                                       FontSize="12" TextWrapping="Wrap"
+                                       Margin="0,12,0,0"
+                                       Foreground="{StaticResource TextMutedBrush}"
+                                       Visibility="{Binding StatusMessage,
+                                                     Converter={StaticResource CountToVisibilityConverter}}"/>
+
+                            <!-- Kết quả import -->
+                            <Border Margin="0,16,0,0"
+                                    Visibility="{Binding HasResult,
+                                                 Converter={StaticResource BoolToVisibilityConverter}}">
+                                <StackPanel>
+                                    <Separator Margin="0,0,0,12"/>
+                                    <TextBlock Text="Kết Quả Import"
+                                               FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition/>
+                                            <ColumnDefinition/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border Background="#F0FDF4" CornerRadius="6" Padding="12,8">
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding ImportResult.SuccessCount}"
+                                                           FontSize="22" FontWeight="Bold"
+                                                           Foreground="{StaticResource SuccessBrush}"
+                                                           HorizontalAlignment="Center"/>
+                                                <TextBlock Text="Thành công" FontSize="11"
+                                                           Foreground="{StaticResource TextMutedBrush}"
+                                                           HorizontalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Border>
+                                        <Border Grid.Column="1" Background="#FFF1F2"
+                                                CornerRadius="6" Padding="12,8"
+                                                Margin="8,0,0,0">
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding ImportResult.ErrorCount}"
+                                                           FontSize="22" FontWeight="Bold"
+                                                           Foreground="{StaticResource DangerBrush}"
+                                                           HorizontalAlignment="Center"/>
+                                                <TextBlock Text="Lỗi" FontSize="11"
+                                                           Foreground="{StaticResource TextMutedBrush}"
+                                                           HorizontalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- PANEL PHẢI -->
+                    <Grid Grid.Column="2">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="180"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Xem trước dữ liệu -->
+                        <Border Background="White" CornerRadius="8"
+                                BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+                                <Border Background="#F8FAFC" Padding="14,10"
+                                        BorderBrush="{StaticResource BorderBrush}"
+                                        BorderThickness="0,0,0,1">
+                                    <TextBlock Text="Xem Trước Dữ Liệu (20 dòng đầu)"
+                                               FontWeight="SemiBold" FontSize="13"/>
+                                </Border>
+                                <DataGrid Grid.Row="1"
+                                          ItemsSource="{Binding PreviewRows}"
+                                          AutoGenerateColumns="False"
+                                          IsReadOnly="True"
+                                          GridLinesVisibility="Horizontal"
+                                          BorderThickness="0"
+                                          RowBackground="White"
+                                          AlternatingRowBackground="#F8FAFC"
+                                          HeadersVisibility="Column"
+                                          CanUserResizeRows="False">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Dòng"       Binding="{Binding RowNumber}"        Width="50"/>
+                                        <DataGridTextColumn Header="Ngày"        Binding="{Binding NgayStr}"          Width="100"/>
+                                        <DataGridTextColumn Header="Số Tiền"     Binding="{Binding SoTienStr}"        Width="110"/>
+                                        <DataGridTextColumn Header="Danh Mục"    Binding="{Binding DanhMuc}"          Width="110"/>
+                                        <DataGridTextColumn Header="Loại"        Binding="{Binding Loai}"             Width="80"/>
+                                        <DataGridTextColumn Header="Mô Tả"       Binding="{Binding MoTa}"             Width="*"/>
+                                        <DataGridTextColumn Header="Trạng Thái"  Binding="{Binding ValidationMessage}" Width="160"/>
+                                    </DataGrid.Columns>
+                                    <DataGrid.RowStyle>
+                                        <Style TargetType="DataGridRow">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsValid}" Value="False">
+                                                    <Setter Property="Background" Value="#FFF1F2"/>
+                                                    <Setter Property="Foreground" Value="#DC2626"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </DataGrid.RowStyle>
+                                </DataGrid>
+                            </Grid>
+                        </Border>
+
+                        <!-- Header lỗi -->
+                        <TextBlock Grid.Row="1"
+                                   Text="Danh Sách Lỗi Chi Tiết"
+                                   FontWeight="SemiBold" Margin="0,10,0,6"
+                                   Visibility="{Binding ImportErrors.Count,
+                                                Converter={StaticResource CountToVisibilityConverter}}"/>
+
+                        <!-- Danh sách lỗi -->
+                        <Border Grid.Row="2" Background="White" CornerRadius="8"
+                                BorderBrush="#FECACA" BorderThickness="1"
+                                Visibility="{Binding ImportErrors.Count,
+                                             Converter={StaticResource CountToVisibilityConverter}}">
+                            <DataGrid ItemsSource="{Binding ImportErrors}"
+                                      AutoGenerateColumns="False" IsReadOnly="True"
+                                      BorderThickness="0" Background="Transparent"
+                                      GridLinesVisibility="Horizontal">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Dòng"         Binding="{Binding RowNumber}"   Width="55"/>
+                                    <DataGridTextColumn Header="Lỗi"          Binding="{Binding ErrorMessage}" Width="*"/>
+                                    <DataGridTextColumn Header="Dữ liệu gốc"  Binding="{Binding RawData}"     Width="180"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </Border>
+                    </Grid>
+                </Grid>
+            </TabItem>
+
+            <!-- ═══ TAB 2: LỊCH SỬ IMPORT ═══ -->
+            <TabItem Header="📋 Lịch Sử Import"
+                     DataContext="{Binding HistoryTab}">
+                <Border Background="White" CornerRadius="8" Margin="8"
+                        BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <Border Background="#F8FAFC" Padding="16,12"
+                                BorderBrush="{StaticResource BorderBrush}"
+                                BorderThickness="0,0,0,1">
+                            <TextBlock Text="Lịch Sử Import File"
+                                       FontWeight="SemiBold" FontSize="14"/>
+                        </Border>
+
+                        <DataGrid Grid.Row="1"
+                                  ItemsSource="{Binding HistoryItems}"
+                                  AutoGenerateColumns="False" IsReadOnly="True"
+                                  GridLinesVisibility="Horizontal"
+                                  RowBackground="White"
+                                  AlternatingRowBackground="#F8FAFC"
+                                  BorderThickness="0">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="ID"          Binding="{Binding Id}"           Width="50"/>
+                                <DataGridTextColumn Header="Tên File"    Binding="{Binding FileName}"     Width="*"/>
+                                <DataGridTextColumn Header="Tổng Dòng"   Binding="{Binding TotalRows}"    Width="80"/>
+                                <DataGridTextColumn Header="Thành Công"  Binding="{Binding SuccessCount}" Width="90"/>
+                                <DataGridTextColumn Header="Lỗi"         Binding="{Binding ErrorCount}"   Width="55"/>
+                                <DataGridTextColumn Header="Trạng Thái"  Binding="{Binding Status}"       Width="100"/>
+                                <DataGridTextColumn Header="Thời Gian"
+                                                    Binding="{Binding StartedAt,
+                                                              StringFormat=dd/MM/yyyy HH:mm}"             Width="130"/>
+                                <DataGridTextColumn Header="Người Dùng"  Binding="{Binding UserEmail}"    Width="180"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <!-- Phân trang -->
+                        <StackPanel Grid.Row="2" Orientation="Horizontal"
+                                    HorizontalAlignment="Right" Margin="16,10">
+                            <Button Content="◀ Trước"
+                                    Command="{Binding PreviousPageCommand}"
+                                    Padding="12,6" Margin="0,0,8,0" Cursor="Hand"
+                                    BorderBrush="{StaticResource BorderBrush}"/>
+                            <TextBlock Text="{Binding PageInfo}"
+                                       VerticalAlignment="Center" Margin="8,0"
+                                       FontSize="13"
+                                       Foreground="{StaticResource TextMutedBrush}"/>
+                            <Button Content="Tiếp ▶"
+                                    Command="{Binding NextPageCommand}"
+                                    Padding="12,6" Cursor="Hand"
+                                    BorderBrush="{StaticResource BorderBrush}"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </TabItem>
+        </TabControl>
+    </Grid>
+</Window>

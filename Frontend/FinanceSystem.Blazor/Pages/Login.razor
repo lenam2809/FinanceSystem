@@ -1,0 +1,63 @@
+@* Trang đăng nhập Blazor *@
+@page "/dang-nhap"
+@layout FinanceSystem.Blazor.Layouts.EmptyLayout
+@inject FinanceSystem.Blazor.Services.IBlazorAuthService AuthService
+@inject NavigationManager Nav
+
+<PageTitle>Đăng Nhập – Tài Chính Cá Nhân</PageTitle>
+
+<div class="login-page">
+    <div class="login-card">
+        <div class="login-icon">💰</div>
+        <h1>Tài Chính Cá Nhân</h1>
+        <p class="text-muted">Đăng nhập để tiếp tục</p>
+
+        @if (!string.IsNullOrEmpty(errorMsg))
+        {
+            <div class="alert alert-danger">⚠ @errorMsg</div>
+        }
+
+        <div class="form-group">
+            <label>Địa Chỉ Email</label>
+            <input type="email" class="form-input" @bind="email" @bind:event="oninput"
+                   placeholder="admin@finance.com" disabled="@isLoading" />
+        </div>
+
+        <div class="form-group">
+            <label>Mật Khẩu</label>
+            <input type="password" class="form-input" @bind="password" @bind:event="oninput"
+                   placeholder="••••••••" disabled="@isLoading" />
+        </div>
+
+        <button class="btn btn-primary" @onclick="LoginAsync" disabled="@(!CanLogin)">
+            @(isLoading ? "Đang đăng nhập..." : "Đăng Nhập")
+        </button>
+    </div>
+</div>
+
+@code {
+    string email = "", password = "", errorMsg = "";
+    bool isLoading = false;
+    bool CanLogin => !string.IsNullOrWhiteSpace(email) && !string.IsNullOrWhiteSpace(password) && !isLoading;
+
+    protected override void OnInitialized()
+    {
+        // Dùng OnInitialized đồng bộ là OK cho redirect đơn giản,
+        // nhưng cần forceLoad:false để tránh NavigationException khi prerender
+        if (AuthService.State.IsAuthenticated)
+            Nav.NavigateTo("/", forceLoad: false);
+    }
+
+    async Task LoginAsync()
+    {
+        isLoading = true; errorMsg = "";
+        try
+        {
+            var ok = await AuthService.LoginAsync(email, password);
+            if (ok) Nav.NavigateTo("/");
+            else errorMsg = "Email hoặc mật khẩu không chính xác.";
+        }
+        catch (Exception ex) { errorMsg = ex.Message; }
+        finally { isLoading = false; }
+    }
+}

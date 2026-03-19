@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Dự án WPF: công cụ admin, import Excel, quản lý giao dịch -->
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>FinanceSystem.WPF</RootNamespace>
+    <!-- Bỏ ApplicationIcon vì file Resources\icon.ico chưa tồn tại -->
+    <StartupObject>FinanceSystem.WPF.App</StartupObject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Shared\FinanceSystem.Contracts\FinanceSystem.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- CommunityToolkit.Mvvm: MVVM framework bắt buộc theo spec -->
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
+    <!-- Microsoft.Extensions.Http: IHttpClientFactory -->
+    <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
+    <!-- Microsoft DI -->
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
+    <!-- EPPlus: đọc và xem trước file Excel -->
+    <PackageReference Include="EPPlus" Version="7.7.0" />
+    <!-- System.Net.Http.Json: PostAsJsonAsync, ReadFromJsonAsync -->
+    <PackageReference Include="System.Net.Http.Json" Version="8.0.0" />
+    <PackageReference Include="System.Formats.Asn1" Version="8.0.1" />
+  </ItemGroup>
+
+</Project>

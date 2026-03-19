@@ -1,0 +1,185 @@
+@* Bảng điều khiển chính - tổng quan thu/chi và biểu đồ *@
+@* FIX NavigationException: KHÔNG gọi Nav.NavigateTo trong markup @if
+   Phải gọi trong OnInitializedAsync() - đây là lifecycle hook an toàn duy nhất *@
+@page "/"
+@inject FinanceSystem.Blazor.Services.IBlazorTransactionService TxService
+@inject FinanceSystem.Blazor.Services.IBlazorAuthService AuthService
+@inject NavigationManager Nav
+
+<PageTitle>Bảng Điều Khiển – Tài Chính Cá Nhân</PageTitle>
+
+@if (isRedirecting)
+{
+    <div class="loading-state">
+        <div class="spinner-large"></div>
+    </div>
+}
+else if (isLoading)
+{
+    <div class="loading-state">
+        <div class="spinner-large"></div>
+        <p>Đang tải dữ liệu...</p>
+    </div>
+}
+else
+{
+    <div class="page-header">
+        <h1 class="page-title">Bảng Điều Khiển</h1>
+        <p class="page-subtitle">Xin chào, @AuthService.State.UserName 👋</p>
+    </div>
+
+    @* Thẻ tổng quan *@
+    <div class="stats-grid">
+        <div class="stat-card stat-card--income">
+            <div class="stat-icon">📈</div>
+            <div class="stat-body">
+                <div class="stat-label">Tổng Thu Nhập</div>
+                <div class="stat-value">@FormatCurrency(summary?.TotalIncome)</div>
+            </div>
+        </div>
+        <div class="stat-card stat-card--expense">
+            <div class="stat-icon">📉</div>
+            <div class="stat-body">
+                <div class="stat-label">Tổng Chi Tiêu</div>
+                <div class="stat-value">@FormatCurrency(summary?.TotalExpense)</div>
+            </div>
+        </div>
+        <div class="stat-card @(summary?.Balance >= 0 ? "stat-card--positive" : "stat-card--negative")">
+            <div class="stat-icon">💰</div>
+            <div class="stat-body">
+                <div class="stat-label">Số Dư</div>
+                <div class="stat-value">@FormatCurrency(summary?.Balance)</div>
+            </div>
+        </div>
+        <div class="stat-card stat-card--neutral">
+            <div class="stat-icon">🔢</div>
+            <div class="stat-body">
+                <div class="stat-label">Số Giao Dịch</div>
+                <div class="stat-value">@(summary?.TransactionCount ?? 0)</div>
+            </div>
+        </div>
+    </div>
+
+    @* Bộ lọc thời gian *@
+    <div class="filter-bar" style="margin-bottom:20px">
+        <span style="font-size:13px;color:var(--text-muted);margin-right:8px">Khoảng thời gian:</span>
+        @foreach (var item in new[] { ("Tháng này","month"), ("Quý này","quarter"), ("Năm này","year"), ("Tất cả","all") })
+        {
+            var key = item.Item2;
+            var label = item.Item1;
+            <button class="btn-outline-sm"
+                    style="@(activeRange == key ? "background:var(--primary);color:white;border-color:var(--primary)" : "")"
+                    @onclick="() => SetRangeAsync(key)">@label</button>
+        }
+    </div>
+
+    @* Giao dịch gần đây *@
+    <div class="recent-section">
+        <div class="section-header">
+            <h3>Giao Dịch Gần Đây</h3>
+            <a href="/giao-dich" class="btn-link">Xem tất cả →</a>
+        </div>
+        @if (recentTransactions?.Items?.Any() == true)
+        {
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Ngày</th>
+                        <th>Mô Tả</th>
+                        <th>Danh Mục</th>
+                        <th>Loại</th>
+                        <th class="text-right">Số Tiền</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var tx in recentTransactions.Items)
+                    {
+                        <tr>
+                            <td>@tx.Date.ToString("dd/MM/yyyy")</td>
+                            <td>@(tx.Description ?? "—")</td>
+                            <td>
+                                <span class="category-badge">
+                                    <span class="dot" style="background:@tx.CategoryColorHex"></span>
+                                    @tx.CategoryName
+                                </span>
+                            </td>
+                            <td>
+                                <span class="type-badge @(tx.Type == "Income" ? "badge-income" : "badge-expense")">
+                                    @(tx.Type == "Income" ? "Thu" : "Chi")
+                                </span>
+                            </td>
+                            <td class="text-right @(tx.Type == "Income" ? "amount-income" : "amount-expense")">
+                                @(tx.Type == "Income" ? "+" : "−")@FormatCurrency(tx.Amount)
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <div class="empty-state">
+                <div class="empty-icon">📭</div>
+                <p>Chưa có giao dịch nào. Hãy import dữ liệu từ Admin Tool.</p>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    FinanceSystem.Contracts.V1.Transactions.TransactionSummaryDto? summary;
+    FinanceSystem.Contracts.V1.Common.PagedResultDto<FinanceSystem.Contracts.V1.Transactions.TransactionDto>? recentTransactions;
+
+    bool isLoading   = true;
+    bool isRedirecting = false;   // tránh render nội dung khi đang redirect
+    string activeRange = "month";
+    DateTime? dateFrom, dateTo;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // ĐÚNG: gọi NavigateTo trong lifecycle hook, KHÔNG trong markup
+        if (!AuthService.State.IsAuthenticated)
+        {
+            isRedirecting = true;
+            Nav.NavigateTo("/dang-nhap", forceLoad: false);
+            return;
+        }
+
+        var now = DateTime.Today;
+        dateFrom = new DateTime(now.Year, now.Month, 1);
+        await LoadDataAsync();
+    }
+
+    async Task SetRangeAsync(string range)
+    {
+        activeRange = range;
+        var now = DateTime.Today;
+        (dateFrom, dateTo) = range switch
+        {
+            "month"   => (new DateTime(now.Year, now.Month, 1),                      (DateTime?)null),
+            "quarter" => (new DateTime(now.Year, ((now.Month - 1) / 3) * 3 + 1, 1), (DateTime?)null),
+            "year"    => (new DateTime(now.Year, 1, 1),                              (DateTime?)null),
+            _         => ((DateTime?)null,                                            (DateTime?)null)
+        };
+        await LoadDataAsync();
+    }
+
+    async Task LoadDataAsync()
+    {
+        isLoading = true;
+        try
+        {
+            summary = await TxService.GetSummaryAsync(dateFrom, dateTo);
+            recentTransactions = await TxService.GetTransactionsAsync(
+                new FinanceSystem.Contracts.V1.Transactions.TransactionFilterDto
+                {
+                    Page = 1, PageSize = 5, SortDesc = true,
+                    DateFrom = dateFrom, DateTo = dateTo
+                });
+        }
+        catch { /* hiển thị trạng thái rỗng nếu lỗi */ }
+        finally { isLoading = false; }
+    }
+
+    static string FormatCurrency(decimal? v) => (v ?? 0).ToString("N0") + " ₫";
+}

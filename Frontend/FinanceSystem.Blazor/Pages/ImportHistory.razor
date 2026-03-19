@@ -1,0 +1,162 @@
+@* Trang xem lịch sử import *@
+@page "/lich-su-import"
+@inject FinanceSystem.Blazor.Services.IBlazorImportService ImportService
+@inject FinanceSystem.Blazor.Services.IBlazorAuthService AuthService
+@inject NavigationManager Nav
+
+<PageTitle>Lịch Sử Import – Tài Chính Cá Nhân</PageTitle>
+
+@if (isRedirecting)
+{
+    <div class="loading-state"><div class="spinner-large"></div></div>
+    return;
+}
+
+<div class="page-header">
+    <h1 class="page-title">Lịch Sử Import Dữ Liệu</h1>
+    <p class="page-subtitle">Danh sách các lần nhập dữ liệu từ file Excel</p>
+</div>
+
+@if (isLoading)
+{
+    <div class="loading">Đang tải...</div>
+}
+else
+{
+    <div class="section-card">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Tên File</th>
+                    <th class="text-center">Tổng Dòng</th>
+                    <th class="text-center">Thành Công</th>
+                    <th class="text-center">Lỗi</th>
+                    <th>Trạng Thái</th>
+                    <th>Thời Gian</th>
+                    <th>Chi Tiết Lỗi</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (result?.Items?.Any() == true)
+                {
+                    @foreach (var h in result.Items)
+                    {
+                        <tr>
+                            <td>@h.Id</td>
+                            <td>
+                                <span class="file-name">📄 @h.FileName</span>
+                            </td>
+                            <td class="text-center">@h.TotalRows</td>
+                            <td class="text-center text-success">@h.SuccessCount</td>
+                            <td class="text-center @(h.ErrorCount > 0 ? "text-danger" : "")">@h.ErrorCount</td>
+                            <td>
+                                <span class="status-badge status-@h.Status.ToLower()">
+                                    @StatusLabel(h.Status)
+                                </span>
+                            </td>
+                            <td>@h.StartedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                            <td>
+                                @if (h.ErrorCount > 0)
+                                {
+                                    <button class="btn-link" @onclick="() => LoadErrors(h.Id)">
+                                        Xem @h.ErrorCount lỗi
+                                    </button>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">—</span>
+                                }
+                            </td>
+                        </tr>
+                        @* Hiển thị lỗi inline nếu đã load *@
+                        @if (expandedId == h.Id && errors.Any())
+                        {
+                            <tr class="error-row">
+                                <td colspan="8">
+                                    <div class="error-detail">
+                                        <h4>Chi tiết lỗi cho lần import #@h.Id</h4>
+                                        <table class="error-table">
+                                            <thead>
+                                                <tr><th>Dòng</th><th>Lỗi</th></tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var err in errors)
+                                                {
+                                                    <tr>
+                                                        <td>@err.RowNumber</td>
+                                                        <td>@err.ErrorMessage</td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="8" class="text-center text-muted">
+                            Chưa có lịch sử import nào.
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        @* Phân trang *@
+        <div class="pagination">
+            <button class="btn-page" @onclick="PrevPage" disabled="@(page <= 1)">← Trước</button>
+            <span class="page-current">Trang @(page) / @(result?.TotalPages ?? 1)</span>
+            <button class="btn-page" @onclick="NextPage" disabled="@(page >= (result?.TotalPages ?? 1))">Tiếp →</button>
+        </div>
+    </div>
+}
+
+@code {
+    FinanceSystem.Contracts.V1.Common.PagedResultDto<FinanceSystem.Contracts.V1.Imports.ImportHistoryDto>? result;
+    List<FinanceSystem.Contracts.V1.Imports.ImportErrorDto> errors = new();
+    int page = 1, expandedId = -1;
+    bool isLoading = true;
+    bool isRedirecting = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // ĐÚNG: gọi NavigateTo trong lifecycle hook, KHÔNG trong markup
+        if (!AuthService.State.IsAuthenticated)
+        {
+            isRedirecting = true;
+            Nav.NavigateTo("/dang-nhap", forceLoad: false);
+            return;
+        }
+        await LoadAsync();
+    }
+
+    async Task LoadAsync()
+    {
+        isLoading = true;
+        try { result = await ImportService.GetHistoryAsync(page, 10); }
+        finally { isLoading = false; }
+    }
+
+    async Task LoadErrors(int importId)
+    {
+        if (expandedId == importId) { expandedId = -1; return; }
+        errors = await ImportService.GetErrorsAsync(importId) ?? new();
+        expandedId = importId;
+    }
+
+    async Task PrevPage() { if (page > 1) { page--; await LoadAsync(); } }
+    async Task NextPage() { if (page < (result?.TotalPages ?? 1)) { page++; await LoadAsync(); } }
+
+    string StatusLabel(string s) => s switch
+    {
+        "Completed"  => "✅ Hoàn thành",
+        "Processing" => "⏳ Đang xử lý",
+        "Failed"     => "❌ Thất bại",
+        _ => s
+    };
+}

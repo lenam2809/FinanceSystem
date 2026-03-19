@@ -1,0 +1,277 @@
+@* Trang Import: tải template + upload file Excel *@
+@page "/import"
+@using FinanceSystem.Blazor.Services
+@using FinanceSystem.Contracts.V1.Imports
+@using Microsoft.AspNetCore.Components.Forms
+@inject IBlazorAuthService AuthService
+@inject IBlazorImportService ImportService
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<PageTitle>Import Dữ Liệu – Tài Chính Cá Nhân</PageTitle>
+
+@if (isRedirecting)
+{
+    <div class="loading-state"><div class="spinner-large"></div></div>
+    return;
+}
+
+<div class="page-header">
+    <h1 class="page-title">Import Giao Dịch</h1>
+    <p class="page-subtitle">Tải template, điền dữ liệu rồi upload để nhập hàng loạt</p>
+</div>
+
+<div class="import-layout">
+
+    @* ── BƯỚC 1: TẢI TEMPLATE ── *@
+    <div class="step-card step-card--download">
+        <div class="step-number">1</div>
+        <div class="step-body">
+            <h3>Tải File Mẫu (Template)</h3>
+            <p>File Excel có sẵn header, dữ liệu mẫu, dropdown danh mục và sheet hướng dẫn.</p>
+            <a href="/api/imports/template"
+               class="btn btn-success"
+               download
+               target="_blank">
+                ⬇ Tải Template Excel (.xlsx)
+            </a>
+            <ul class="template-hints">
+                <li>📋 Sheet <strong>Giao Dịch</strong>: điền dữ liệu từ dòng 5</li>
+                <li>📂 Sheet <strong>Danh Mục</strong>: xem danh sách danh mục hợp lệ</li>
+                <li>❓ Sheet <strong>Hướng Dẫn</strong>: quy tắc nhập liệu chi tiết</li>
+            </ul>
+        </div>
+    </div>
+
+    @* ── BƯỚC 2: UPLOAD FILE ── *@
+    <div class="step-card step-card--upload">
+        <div class="step-number">2</div>
+        <div class="step-body">
+            <h3>Upload File Đã Điền</h3>
+            <p>Chọn file .xlsx đã điền dữ liệu. Hệ thống sẽ validate từng dòng và báo lỗi cụ thể.</p>
+
+            <div class="upload-zone @(isDragOver ? "drag-over" : "")"
+                 @ondragover:preventDefault="true"
+                 @ondragover="() => isDragOver = true"
+                 @ondragleave="() => isDragOver = false"
+                 @ondrop="HandleDrop">
+                <span class="upload-icon">📂</span>
+                <p>Kéo thả file vào đây hoặc</p>
+                <label class="btn btn-primary btn-sm">
+                    Chọn File
+                    <InputFile OnChange="HandleFileSelected" accept=".xlsx" style="display:none"/>
+                </label>
+                @if (!string.IsNullOrEmpty(selectedFileName))
+                {
+                    <p class="selected-file">📄 @selectedFileName</p>
+                }
+            </div>
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-error" style="margin-top:12px">⚠ @errorMessage</div>
+            }
+
+            <button class="btn btn-primary"
+                    style="margin-top:12px; width:100%"
+                    @onclick="UploadAsync"
+                    disabled="@(selectedFile == null || isUploading)">
+                @if (isUploading)
+                {
+                    <span class="spinner"></span>
+                    <span>Đang xử lý...</span>
+                }
+                else
+                {
+                    <span>🚀 Bắt Đầu Import</span>
+                }
+            </button>
+        </div>
+    </div>
+
+    @* ── KẾT QUẢ IMPORT ── *@
+    @if (importResult != null)
+    {
+        <div class="step-card step-card--result">
+            <div class="step-number @(importResult.ErrorCount == 0 ? "step-number--success" : "step-number--warning")">3</div>
+            <div class="step-body">
+                <h3>Kết Quả Import</h3>
+                <div class="result-stats">
+                    <div class="result-stat result-stat--success">
+                        <div class="result-stat-value">@importResult.SuccessCount</div>
+                        <div class="result-stat-label">Thành công</div>
+                    </div>
+                    <div class="result-stat result-stat--error">
+                        <div class="result-stat-value">@importResult.ErrorCount</div>
+                        <div class="result-stat-label">Lỗi</div>
+                    </div>
+                    <div class="result-stat result-stat--total">
+                        <div class="result-stat-value">@importResult.TotalRows</div>
+                        <div class="result-stat-label">Tổng dòng</div>
+                    </div>
+                </div>
+                <p class="result-message @(importResult.ErrorCount == 0 ? "text-success" : "")">
+                    @importResult.Message
+                </p>
+
+                @* Chi tiết lỗi *@
+                @if (importErrors.Any())
+                {
+                    <div style="margin-top:16px">
+                        <h4 style="font-size:14px;font-weight:600;color:var(--danger);margin-bottom:8px">
+                            Chi Tiết Lỗi (@importErrors.Count dòng)
+                        </h4>
+                        <div class="table-card" style="max-height:260px;overflow-y:auto">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Dòng</th>
+                                        <th>Lỗi</th>
+                                        <th>Dữ liệu gốc</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var err in importErrors)
+                                    {
+                                        <tr class="row-error">
+                                            <td>@err.RowNumber</td>
+                                            <td>@err.ErrorMessage</td>
+                                            <td><code style="font-size:11px">@err.RawData</code></td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@* CSS riêng cho trang này *@
+<style>
+    .import-layout      { display: flex; flex-direction: column; gap: 20px; max-width: 760px; }
+    .step-card          { display: flex; gap: 20px; background: white; border-radius: 10px;
+                          border: 1px solid var(--border); padding: 24px; box-shadow: var(--shadow); }
+    .step-card--download{ border-left: 4px solid #16A34A; }
+    .step-card--upload  { border-left: 4px solid var(--primary); }
+    .step-card--result  { border-left: 4px solid #D97706; }
+    .step-number        { width: 36px; height: 36px; border-radius: 50%; background: var(--primary);
+                          color: white; font-weight: 700; font-size: 16px; flex-shrink: 0;
+                          display: flex; align-items: center; justify-content: center; }
+    .step-number--success { background: #16A34A; }
+    .step-number--warning { background: #D97706; }
+    .step-body          { flex: 1; }
+    .step-body h3       { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+    .step-body p        { font-size: 13px; color: var(--text-muted); margin-bottom: 12px; }
+    .template-hints     { margin: 12px 0 0 4px; padding: 0; list-style: none;
+                          display: flex; flex-direction: column; gap: 4px; }
+    .template-hints li  { font-size: 12px; color: var(--text-muted); }
+    .btn-success        { background: #16A34A; color: white; padding: 8px 18px;
+                          border-radius: 6px; font-weight: 600; font-size: 14px;
+                          text-decoration: none; display: inline-block; }
+    .btn-success:hover  { background: #15803D; }
+    .btn-sm             { padding: 6px 14px; font-size: 13px; }
+    .upload-zone        { border: 2px dashed var(--border); border-radius: 8px;
+                          padding: 28px 20px; text-align: center; transition: all .2s; }
+    .upload-zone.drag-over { border-color: var(--primary); background: #EFF6FF; }
+    .upload-icon        { font-size: 32px; display: block; margin-bottom: 8px; }
+    .selected-file      { margin-top: 8px; font-size: 13px; color: var(--primary);
+                          font-weight: 500; }
+    .result-stats       { display: flex; gap: 16px; margin-bottom: 12px; }
+    .result-stat        { flex: 1; text-align: center; padding: 14px;
+                          border-radius: 8px; }
+    .result-stat--success { background: #F0FDF4; }
+    .result-stat--error   { background: #FEF2F2; }
+    .result-stat--total   { background: #F8FAFC; }
+    .result-stat-value  { font-size: 28px; font-weight: 700;
+                          font-family: 'JetBrains Mono', monospace; }
+    .result-stat--success .result-stat-value { color: #16A34A; }
+    .result-stat--error   .result-stat-value { color: #DC2626; }
+    .result-stat-label  { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .result-message     { font-size: 13px; color: var(--text-muted); }
+</style>
+
+@code {
+    bool isRedirecting = false;
+    bool isUploading   = false;
+    bool isDragOver    = false;
+
+    IBrowserFile? selectedFile;
+    string selectedFileName = string.Empty;
+    string errorMessage     = string.Empty;
+
+    ImportResultDto?        importResult;
+    List<ImportErrorDto>    importErrors = new();
+
+    protected override void OnInitialized()
+    {
+        if (!AuthService.State.IsAuthenticated)
+        {
+            isRedirecting = true;
+            Nav.NavigateTo("/dang-nhap", forceLoad: false);
+        }
+    }
+
+    private void HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        errorMessage   = string.Empty;
+        importResult   = null;
+        importErrors.Clear();
+
+        var file = e.File;
+        if (!file.Name.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase))
+        {
+            errorMessage = "Chỉ chấp nhận file định dạng .xlsx.";
+            return;
+        }
+        if (file.Size > 10 * 1024 * 1024)
+        {
+            errorMessage = "File quá lớn. Giới hạn 10 MB.";
+            return;
+        }
+        selectedFile     = file;
+        selectedFileName = file.Name;
+    }
+
+    private void HandleDrop(DragEventArgs e)
+    {
+        isDragOver = false;
+        // Drag-drop file xử lý qua InputFile — chỉ reset trạng thái visual ở đây
+    }
+
+    private async Task UploadAsync()
+    {
+        if (selectedFile == null) return;
+
+        isUploading  = true;
+        errorMessage = string.Empty;
+        importResult = null;
+        importErrors.Clear();
+
+        try
+        {
+            // Đọc stream từ IBrowserFile và upload lên API
+            using var stream  = selectedFile.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
+            using var ms      = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            var bytes = ms.ToArray();
+
+            var result = await ImportService.UploadAsync(bytes, selectedFileName);
+            importResult = result;
+
+            // Nếu có lỗi thì tải chi tiết
+            if (result?.ErrorCount > 0)
+                importErrors = await ImportService.GetErrorsAsync(result.ImportId) ?? new();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Lỗi upload: {ex.Message}";
+        }
+        finally
+        {
+            isUploading = false;
+        }
+    }
+}

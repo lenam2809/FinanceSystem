@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <!-- Dự án API: ASP.NET Core Web API, điểm vào chính của backend -->
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>FinanceSystem.API</RootNamespace>
+    <UserSecretsId>finance-system-api-secrets</UserSecretsId>
+    <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FinanceSystem.Application\FinanceSystem.Application.csproj" />
+    <ProjectReference Include="..\FinanceSystem.Infrastructure\FinanceSystem.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Shared\FinanceSystem.Contracts\FinanceSystem.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Serilog: ghi log ra console và file -->
+    <PackageReference Include="Hangfire.Core" Version="1.8.9" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.4">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Serilog.AspNetCore" Version="8.0.1" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="5.0.1" />
+    <PackageReference Include="Serilog.Sinks.File" Version="5.0.0" />
+    <!-- Swagger / OpenAPI -->
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
+    <!-- Rate Limiting và SignalR đã tích hợp sẵn trong Microsoft.NET.Sdk.Web (.NET 8)
+         Không cần khai báo package riêng - dùng trực tiếp namespace:
+         using System.Threading.RateLimiting;
+         using Microsoft.AspNetCore.SignalR; -->
+    <!-- Hangfire: xử lý background jobs -->
+    <PackageReference Include="Hangfire.AspNetCore" Version="1.8.9" />
+    <PackageReference Include="Hangfire.PostgreSql" Version="1.20.9" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+  </ItemGroup>
+
+</Project>
