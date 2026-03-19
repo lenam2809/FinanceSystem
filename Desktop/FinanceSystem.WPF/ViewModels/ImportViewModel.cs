@@ -37,10 +37,20 @@ public partial class ImportViewModel : ObservableObject
 
     [ObservableProperty] private string _selectedFilePath  = string.Empty;
     [ObservableProperty] private string _selectedFileName  = "Chưa chọn file";
-    [ObservableProperty] private bool   _isFileSelected    = false;
-    [ObservableProperty] private bool   _isImporting       = false;
-    [ObservableProperty] private bool   _isDownloading     = false;
-    [ObservableProperty] private bool   _hasResult         = false;
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(ImportCommand))]
+    private bool _isFileSelected = false;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(ImportCommand))]
+    [NotifyCanExecuteChangedFor(nameof(DownloadTemplateCommand))]
+    private bool _isImporting = false;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(DownloadTemplateCommand))]
+    private bool _isDownloading = false;
+
+    [ObservableProperty] private bool _hasResult = false;
     [ObservableProperty] private string _statusMessage     = string.Empty;
     [ObservableProperty] private bool   _isSuccess         = false;
     [ObservableProperty] private ImportResultDto? _importResult;
@@ -270,6 +280,9 @@ public partial class ImportViewModel : ObservableObject
             StatusMessage = PreviewRows.Count == 0
                 ? "Không tìm thấy dòng dữ liệu nào (dữ liệu bắt đầu từ dòng 5)."
                 : $"Xem trước: {PreviewRows.Count} dòng — {okCount} hợp lệ, {errCount} có lỗi.";
+
+            // Thông báo cho UI cập nhật trạng thái nút Import
+            ImportCommand.NotifyCanExecuteChanged();
         }
         catch (Exception ex)
         {
@@ -373,7 +386,7 @@ public partial class ImportViewModel : ObservableObject
         }
     }
 
-    private bool CanImport() => IsFileSelected && !IsImporting;
+    private bool CanImport() => IsFileSelected && !IsImporting && PreviewRows.Any(r => r.IsValid);
 
     private async Task LoadErrorsAsync(int importId)
     {
